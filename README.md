@@ -92,13 +92,18 @@ El servidor valida las credenciales contra DocenciaWeb antes de guardarlas cifra
 
 | Herramienta | Descripción |
 |---|---|
-| `docencia_conectar` | Conecta la cuenta de DocenciaWeb (`usuario`, `clave`) |
-| `docencia_estado` | Indica si ya hay conexión guardada |
+| `docencia_estado` | Indica si ya iniciaste sesión en el navegador |
 | `docencia_mis_cursos` | Lista cursos visibles (código, sección, periodo) |
 | `docencia_lista_alumnos` | Lista de alumnos en JSON (`curso`, `periodo`, `secciones`) |
 | `docencia_justificaciones` | Justificaciones en JSON (mismos parámetros) |
 | `docencia_exportar_excel` | Mismo contenido en `.xlsx` (base64) con el formato original |
 | `docencia_desconectar` | Borra las credenciales guardadas |
+
+> **Seguridad:** ninguna herramienta pide ni recibe tu clave de DocenciaWeb. Se ingresa
+> una sola vez en el navegador (`/sign-in`) y queda cifrada. Si falta conexión, las
+> herramientas responden con el enlace de login en vez de pedir la clave por chat.
+> (`POST /api/docencia/connect` sigue existiendo solo para uso programático propio,
+> nunca a través del chat.)
 
 Configuración de ejemplo para el cliente en `mcp.example.json`.
 
@@ -156,8 +161,8 @@ Pasos para conectarlos:
    `https://TU-APP/mcp`. El cliente se registra solo, te abre el login: entra con tu
    **usuario y clave de DocenciaWeb** (sin email; la cuenta de la app se crea sola y
    tu conexión queda guardada en el mismo paso). Apruebas el acceso y listo.
-5. Después, dentro del chat, puedes extraer directo. `docencia_conectar` sigue
-   disponible por si cambias tu clave o quieres reconectar.
+5. Después, dentro del chat, puedes extraer directo. Si cambias tu clave de
+   DocenciaWeb, vuelve a entrar en `/sign-in` del navegador (actualiza la conexión).
 
 ## Si algo falla
 

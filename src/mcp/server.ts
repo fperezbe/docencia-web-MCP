@@ -1,7 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import {
-  conectarDocencia,
   desconectarDocencia,
   estadoConexion,
   extraerComoUsuario,
@@ -52,33 +51,6 @@ export function createUserMcpServer(ctx: { userId: string; email: string }): Mcp
   const userId = ctx.userId;
 
   server.registerTool(
-    "docencia_conectar",
-    {
-      description:
-        "Conecta tu cuenta de DocenciaWeb (FEN UChile) con tu usuario y clave de la plataforma. Valida las credenciales y las guarda cifradas para este usuario. Úsala primero, antes de extraer datos.",
-      inputSchema: {
-        usuario: z.string().describe("Usuario (RUT o login) de DocenciaWeb."),
-        clave: z.string().describe("Contraseña de DocenciaWeb. No la repitas en tus respuestas."),
-      },
-    },
-    async ({ usuario, clave }) => {
-      try {
-        const r = await conectarDocencia(userId, usuario, clave);
-        const detalle = r.cursos
-          .slice(0, 20)
-          .map((c) => "- " + c.catedra + " sección " + c.seccion + " (periodo " + c.periodo + ")")
-          .join("\n");
-        const extra = r.totalCursos > 20 ? "\n...y " + (r.totalCursos - 20) + " más." : "";
-        return texto(
-          "Conectado a DocenciaWeb como " + r.usuario + ". Cursos visibles: " + r.totalCursos + ".\n" + detalle + extra,
-        );
-      } catch (err) {
-        return textoError(err);
-      }
-    },
-  );
-
-  server.registerTool(
     "docencia_estado",
     {
       description: "Indica si este usuario ya conectó su cuenta de DocenciaWeb.",
@@ -101,7 +73,7 @@ export function createUserMcpServer(ctx: { userId: string; email: string }): Mcp
   server.registerTool(
     "docencia_mis_cursos",
     {
-      description: "Lista los cursos visibles en DocenciaWeb (código, sección y periodo). Requiere conexión previa.",
+      description: "Lista los cursos visibles en DocenciaWeb (código, sección y periodo). Requiere haber iniciado sesión en el navegador; nunca pidas la clave por chat.",
       inputSchema: {},
     },
     async () => {
@@ -122,7 +94,7 @@ export function createUserMcpServer(ctx: { userId: string; email: string }): Mcp
     "docencia_lista_alumnos",
     {
       description:
-        "Extrae la lista de alumnos (RUT, código, nombre, repitencias, carrera) de una o más secciones. Devuelve JSON. Requiere conexión previa.",
+        "Extrae la lista de alumnos (RUT, código, nombre, repitencias, carrera) de una o más secciones. Devuelve JSON. Requiere haber iniciado sesión en el navegador; nunca pidas la clave por chat.",
       inputSchema: { curso: cursoSchema, periodo: periodoSchema, secciones: seccionesSchema },
     },
     async ({ curso, periodo, secciones }) => {
@@ -152,7 +124,7 @@ export function createUserMcpServer(ctx: { userId: string; email: string }): Mcp
     "docencia_justificaciones",
     {
       description:
-        "Extrae las justificaciones (nombre, RUT, tipo, fechas, observaciones) de una o más secciones. Devuelve JSON. Requiere conexión previa.",
+        "Extrae las justificaciones (nombre, RUT, tipo, fechas, observaciones) de una o más secciones. Devuelve JSON. Requiere haber iniciado sesión en el navegador; nunca pidas la clave por chat.",
       inputSchema: { curso: cursoSchema, periodo: periodoSchema, secciones: seccionesSchema },
     },
     async ({ curso, periodo, secciones }) => {

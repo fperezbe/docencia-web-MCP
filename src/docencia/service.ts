@@ -1,5 +1,6 @@
 import { eq } from "drizzle-orm";
 import { db } from "../db/index.js";
+import { env } from "../env.js";
 import { docenciaConnection } from "../db/schema.js";
 import { cifrarClavePlana, descifrarClavePlana } from "../crypto.js";
 import {
@@ -57,8 +58,9 @@ export async function leerCredenciales(
     .limit(1);
   const fila = filas[0];
   if (!fila) {
+    const login = `${env.BETTER_AUTH_URL.replace(/\/+$/, "")}/sign-in`;
     throw new ScrapeError(
-      "Tu cuenta no está conectada a DocenciaWeb. Conéctala con tu usuario y clave (herramienta docencia_conectar o POST /api/docencia/connect).",
+      `Tu cuenta no está conectada a DocenciaWeb. Abre ${login} en tu navegador e inicia sesión con tu usuario y clave (no la escribas en el chat).`,
       401,
     );
   }
