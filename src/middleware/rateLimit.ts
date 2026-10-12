@@ -1,4 +1,4 @@
-import rateLimit from "express-rate-limit";
+import { rateLimit } from "express-rate-limit";
 
 // Tope blando para el login de la app (evita fuerza bruta al /api/auth/*).
 export const limiteAuth = rateLimit({

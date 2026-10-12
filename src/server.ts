@@ -102,6 +102,11 @@ app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
   res.status(status >= 400 && status < 600 ? status : 500).json({ error: "Error interno." });
 });
 
-app.listen(env.PORT, env.HOST, () => {
-  console.log(`docenciaweb-mcp listo en http://${env.HOST}:${env.PORT}  (MCP en POST /mcp)`);
-});
+export default app;
+
+// En Vercel (serverless) no se abre puerto: la app se exporta y sirve vía api/index.ts.
+if (!process.env.VERCEL) {
+  app.listen(env.PORT, env.HOST, () => {
+    console.log(`docenciaweb-mcp listo en http://${env.HOST}:${env.PORT}  (MCP en POST /mcp)`);
+  });
+}
