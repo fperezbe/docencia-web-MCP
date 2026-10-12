@@ -124,8 +124,45 @@ Flujo típico con el asistente: `docencia_conectar` → `docencia_mis_cursos` �
 - Las sesiones de DocenciaWeb son por extracción (un cookie jar por llamada); nada se comparte entre usuarios.
 - En producción usa HTTPS (detrás de un proxy), `HOST=127.0.0.1` + proxy reverso, y rota `ENCRYPTION_KEY`/`BETTER_AUTH_SECRET` con cuidado (rotar la primera invalida las claves guardadas: los usuarios deben reconectar).
 
+## ChatGPT y Claude Desktop (OAuth)
+
+El servidor es también un proveedor OAuth 2.1 (plugin MCP de Better Auth), que es
+lo que exigen ChatGPT y los conectores de Claude Desktop:
+
+- Descubrimiento: `/.well-known/oauth-protected-resource/mcp` y
+  `/api/auth/.well-known/oauth-authorization-server`.
+- Registro: CIMD (opción recomendada en Claude) y DCR abierto (lo que usa ChatGPT).
+- Login y consentimiento en `/sign-in` y `/consent` (páginas servidas por el mismo Express).
+- `POST /mcp` acepta el access token OAuth (verificado contra JWKS, `aud` = la URL
+  del `/mcp`) **además** de la sesión/Bearer de siempre. Sin credencial responde 401
+  con el header `WWW-Authenticate` que inicia el flujo OAuth en el cliente.
+
+Pasos para conectarlos:
+
+1. Aplica la migración OAuth en Supabase: `npm run db:push` (o pega
+   `drizzle/0002_oauth.sql` en el SQL Editor). Sin estas tablas el servidor no parte:
+   al arrancar siembra el recurso OAuth en la BD.
+2. Revisa que `BETTER_AUTH_URL` sea la URL pública exacta con `https`
+   (ej. `https://docencia-web-mcp.vercel.app`). El `resource` OAuth es esa URL + `/mcp`.
+3. Redespliega y comprueba:
+   ```
+   curl https://TU-APP/.well-known/oauth-protected-resource/mcp
+   curl https://TU-APP/api/auth/.well-known/oauth-authorization-server
+   curl -i -X POST https://TU-APP/mcp -H 'Content-Type: application/json' -d '{}'
+   # -> 401 con header WWW-Authenticate: Bearer resource_metadata="...oauth-protected-resource/mcp"
+   ```
+4. En ChatGPT (Nuevo complemento) o Claude (Conector personalizado) ingresa
+   `https://TU-APP/mcp`. El cliente se registra solo, te abre el login (crea tu
+   usuario de la app ahí mismo si no tienes), apruebas el acceso y listo.
+5. Después, dentro del chat, usa `docencia_conectar` con tu usuario y clave de
+   DocenciaWeb: esa conexión sigue siendo una por usuario de la app.
+
 ## Si algo falla
 
+- **El servidor no parte (`ECONNREFUSED` a Postgres al arrancar)**: la BD debe estar
+  accesible en el boot (el plugin OAuth siembra el recurso). Revisa `DATABASE_URL`.
+- **"No se han podido detectar los ajustes de OAuth"** en ChatGPT: redespliega con el
+  código actual y repite los `curl` del punto 3.
 - **401 en /mcp o /api/docencia**: sesión ausente o Bearer inválido → inicia sesión de nuevo.
 - **"Usuario o contraseña incorrectos"**: credenciales de DocenciaWeb, no de la app.
 - **"No pude abrir CURSO/01..."**: revisa código, sección, periodo y acceso al curso.

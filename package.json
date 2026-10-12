@@ -19,6 +19,8 @@
     "gen:key": "node -e \"console.log(require('node:crypto').randomBytes(32).toString('hex'))\""
   },
   "dependencies": {
+    "@better-auth/cimd": "^1.7.7",
+    "@better-auth/mcp": "^1.7.7",
     "@modelcontextprotocol/sdk": "^1.17.0",
     "axios": "^1.7.9",
     "axios-cookiejar-support": "^5.0.5",
@@ -32,7 +34,7 @@
     "pg": "^8.13.0",
     "tough-cookie": "^5.1.0",
     "xlsx-js-style": "^1.2.0",
-    "zod": "^3.23.8"
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@types/cors": "^2.8.17",
