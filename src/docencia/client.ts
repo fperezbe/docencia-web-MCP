@@ -56,6 +56,13 @@ export interface OpcionesExtraccion extends CredencialesDocencia {
   periodo: string;
   tipo: TipoExtraccion;
   onProgreso?: (actual: number, total: number, seccion: string) => void;
+  // Pausa base entre secciones (ms). Si se omite, 1200.
+  pausaMs?: number;
+}
+
+// Pausa con jitter: evita ráfagas mecánicas contra la plataforma.
+function esperar(ms: number): Promise<void> {
+  return new Promise((r) => setTimeout(r, ms));
 }
 
 // Cliente mínimo que usa el scraper (evita fricción de tipos entre axios y el wrapper de cookies).
@@ -281,7 +288,9 @@ export async function extraer(op: OpcionesExtraccion): Promise<(Alumno | Justifi
   }
 
   const filas: (Alumno | Justificacion)[] = [];
+  const pausa = op.pausaMs ?? 1200;
   for (const [i, seccion] of op.secciones.entries()) {
+    if (i > 0) await esperar(pausa + Math.random() * 800);
     op.onProgreso?.(i + 1, op.secciones.length, seccion);
     try {
       if (op.tipo === "lista") {

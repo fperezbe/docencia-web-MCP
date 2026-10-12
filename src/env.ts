@@ -16,4 +16,7 @@ export const env = {
   ENCRYPTION_KEY: requerido("ENCRYPTION_KEY"),
   PORT: Number(process.env.PORT ?? 3000),
   HOST: process.env.HOST ?? "127.0.0.1",
+  // Pausa base entre secciones al extraer (ms). Súmale jitter automático.
+  // Evita ráfagas contra DocenciaWeb y cuida la cuenta del usuario.
+  PAUSA_DOCENCIA_MS: Number(process.env.PAUSA_DOCENCIA_MS ?? 1200),
 };

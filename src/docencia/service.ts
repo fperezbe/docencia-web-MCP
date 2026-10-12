@@ -99,7 +99,7 @@ export async function extraerComoUsuario(
   const p = validarExtraccion(entrada);
   const creds = await leerCredenciales(userId);
   if (p.tipo === "lista") {
-    return extraer({ ...creds, curso: p.curso, secciones: p.secciones, periodo: p.periodo, tipo: "lista" });
+    return extraer({ ...creds, curso: p.curso, secciones: p.secciones, periodo: p.periodo, tipo: "lista", pausaMs: env.PAUSA_DOCENCIA_MS });
   }
   return extraer({
     ...creds,
@@ -107,5 +107,6 @@ export async function extraerComoUsuario(
     secciones: p.secciones,
     periodo: p.periodo,
     tipo: "justificaciones",
+    pausaMs: env.PAUSA_DOCENCIA_MS,
   });
 }
