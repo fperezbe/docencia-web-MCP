@@ -21,6 +21,8 @@ const MAX_FILAS_JSON = 1000;
 
 type Fila = Alumno | Justificacion;
 
+const SOLO_LECTURA = { readOnlyHint: true, destructiveHint: false, idempotentHint: true } as const;
+
 function mensajeError(err: unknown): string {
   if (err instanceof ScrapeError) return err.message;
   if (err instanceof Error) return err.message;
@@ -55,6 +57,7 @@ export function createUserMcpServer(ctx: { userId: string; email: string }): Mcp
     {
       description: "Indica si este usuario ya conectó su cuenta de DocenciaWeb.",
       inputSchema: {},
+      annotations: SOLO_LECTURA,
     },
     async () => {
       try {
@@ -75,6 +78,7 @@ export function createUserMcpServer(ctx: { userId: string; email: string }): Mcp
     {
       description: "Lista los cursos visibles en DocenciaWeb (código, sección y periodo). Requiere haber iniciado sesión en el navegador; nunca pidas la clave por chat.",
       inputSchema: {},
+      annotations: SOLO_LECTURA,
     },
     async () => {
       try {
@@ -94,8 +98,9 @@ export function createUserMcpServer(ctx: { userId: string; email: string }): Mcp
     "docencia_lista_alumnos",
     {
       description:
-        "Extrae la lista de alumnos (RUT, código, nombre, repitencias, carrera) de una o más secciones. Devuelve JSON. Requiere haber iniciado sesión en el navegador; nunca pidas la clave por chat.",
+        "Extrae la lista de alumnos (RUT, código, nombre, repitencias, carrera) de una o más secciones. Devuelve JSON rápido; prefiérela sobre exportar_excel. Requiere haber iniciado sesión en el navegador; nunca pidas la clave por chat.",
       inputSchema: { curso: cursoSchema, periodo: periodoSchema, secciones: seccionesSchema },
+      annotations: SOLO_LECTURA,
     },
     async ({ curso, periodo, secciones }) => {
       try {
@@ -124,8 +129,9 @@ export function createUserMcpServer(ctx: { userId: string; email: string }): Mcp
     "docencia_justificaciones",
     {
       description:
-        "Extrae las justificaciones (nombre, RUT, tipo, fechas, observaciones) de una o más secciones. Devuelve JSON. Requiere haber iniciado sesión en el navegador; nunca pidas la clave por chat.",
+        "Extrae las justificaciones (nombre, RUT, tipo, fechas, observaciones) de una o más secciones. Devuelve JSON rápido; prefiérela sobre exportar_excel. Requiere haber iniciado sesión en el navegador; nunca pidas la clave por chat.",
       inputSchema: { curso: cursoSchema, periodo: periodoSchema, secciones: seccionesSchema },
+      annotations: SOLO_LECTURA,
     },
     async ({ curso, periodo, secciones }) => {
       try {
@@ -146,7 +152,7 @@ export function createUserMcpServer(ctx: { userId: string; email: string }): Mcp
     "docencia_exportar_excel",
     {
       description:
-        "Extrae una o más secciones y devuelve el archivo Excel (.xlsx) en base64, con el mismo formato original. Solo para cursos pequeños/medianos: el base64 ocupa contexto.",
+        "LENTA con muchas secciones (raspa una por una, puede tardar un minuto o más): úsala solo si el usuario pide explícitamente un archivo .xlsx; si no, usa las herramientas JSON. Con muchas secciones, divide en llamados de pocas secciones. Devuelve el Excel en base64 con el formato original.",
       inputSchema: {
         curso: cursoSchema,
         periodo: periodoSchema,
@@ -156,6 +162,7 @@ export function createUserMcpServer(ctx: { userId: string; email: string }): Mcp
           .default("lista")
           .describe("Tipo de planilla: lista o justificaciones."),
       },
+      annotations: SOLO_LECTURA,
     },
     async ({ curso, periodo, secciones, tipo }) => {
       try {
@@ -186,6 +193,7 @@ export function createUserMcpServer(ctx: { userId: string; email: string }): Mcp
     {
       description: "Borra las credenciales de DocenciaWeb guardadas para este usuario.",
       inputSchema: {},
+      annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true },
     },
     async () => {
       try {

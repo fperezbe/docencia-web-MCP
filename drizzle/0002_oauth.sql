@@ -1,6 +1,9 @@
 -- Tablas OAuth 2.1 / MCP (ChatGPT y Claude Desktop). Generadas por `auth generate`.
 -- Uso: psql "$DATABASE_URL" -f drizzle/0002_oauth.sql   (o `npm run db:push`)
 -- Requiere 0001_init.sql (referencias a "user" y "session").
+-- Idempotente: puede correrse varias veces sin duplicar nada.
+
+CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
 CREATE TABLE IF NOT EXISTS "jwks" (
   "id" text PRIMARY KEY,
