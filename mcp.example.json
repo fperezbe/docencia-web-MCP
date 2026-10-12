@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "docenciaweb": {
+      "url": "http://localhost:3000/mcp",
+      "headers": {
+        "Authorization": "Bearer PEGA_AQUI_EL_TOKEN_OBTENIDO_AL_INICIAR_SESION"
+      }
+    }
+  }
+}
