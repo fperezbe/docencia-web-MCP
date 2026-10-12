@@ -109,6 +109,7 @@ Flujo típico con el asistente: `docencia_conectar` → `docencia_mis_cursos` �
 
 | Método | Ruta | Descripción |
 |---|---|---|
+| `POST` | `/api/acceso` | Login único con usuario+clave de DocenciaWeb (crea usuario, guarda conexión, devuelve clave temporal para el sign-in) |
 | `POST` | `/api/docencia/connect` | Guarda la conexión (`usuario`, `clave`) |
 | `GET` | `/api/docencia/estado` | Estado de la conexión |
 | `GET` | `/api/docencia/cursos` | Cursos visibles |
@@ -152,10 +153,11 @@ Pasos para conectarlos:
    # -> 401 con header WWW-Authenticate: Bearer resource_metadata="...oauth-protected-resource/mcp"
    ```
 4. En ChatGPT (Nuevo complemento) o Claude (Conector personalizado) ingresa
-   `https://TU-APP/mcp`. El cliente se registra solo, te abre el login (crea tu
-   usuario de la app ahí mismo si no tienes), apruebas el acceso y listo.
-5. Después, dentro del chat, usa `docencia_conectar` con tu usuario y clave de
-   DocenciaWeb: esa conexión sigue siendo una por usuario de la app.
+   `https://TU-APP/mcp`. El cliente se registra solo, te abre el login: entra con tu
+   **usuario y clave de DocenciaWeb** (sin email; la cuenta de la app se crea sola y
+   tu conexión queda guardada en el mismo paso). Apruebas el acceso y listo.
+5. Después, dentro del chat, puedes extraer directo. `docencia_conectar` sigue
+   disponible por si cambias tu clave o quieres reconectar.
 
 ## Si algo falla
 

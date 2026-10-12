@@ -8,6 +8,7 @@ import { MCP_RESOURCE, auth } from "./auth.js";
 import { db, schema } from "./db/index.js";
 import { env } from "./env.js";
 import { docenciaRouter } from "./routes/docencia.js";
+import { accesoRouter } from "./routes/acceso.js";
 import { paginasRouter } from "./routes/paginas.js";
 import { createUserMcpServer } from "./mcp/server.js";
 import { limiteAuth } from "./middleware/rateLimit.js";
@@ -52,6 +53,7 @@ app.get("/api/me", async (req, res) => {
 });
 
 app.use("/api/docencia", docenciaRouter);
+app.use("/api", accesoRouter);
 
 // URL de la metadata del recurso protegido (fórmula RFC 9728, igual que el plugin).
 function urlMetadataRecurso(): string {

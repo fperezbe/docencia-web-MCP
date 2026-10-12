@@ -30,6 +30,12 @@ export async function conectarDocencia(
     throw new ScrapeError("Falta el usuario o la contraseña de DocenciaWeb.", 400);
   }
   const cursos = await listarCursos({ usuario, clave });
+  await guardarConexion(userId, usuario, clave);
+  return { conectado: true, usuario, totalCursos: cursos.length, cursos };
+}
+
+// Guarda (o reemplaza) la conexión cifrada. Asume credenciales ya validadas.
+export async function guardarConexion(userId: string, usuario: string, clave: string): Promise<void> {
   const cifrado = cifrarClavePlana(clave);
   await db
     .insert(docenciaConnection)
@@ -38,7 +44,6 @@ export async function conectarDocencia(
       target: docenciaConnection.userId,
       set: { docenciaUsuario: usuario, ...cifrado, updatedAt: new Date() },
     });
-  return { conectado: true, usuario, totalCursos: cursos.length, cursos };
 }
 
 // Lee y descifra las credenciales guardadas. Falla 401 si no hay conexión.
