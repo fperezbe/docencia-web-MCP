@@ -116,6 +116,11 @@ export const paginasRouter = Router();
 paginasRouter.get("/sign-in", (_req, res) => {
   res.type("html").send(paginaSignIn());
 });
+// Alias corto para compartir desde el chat: /conectar -> /sign-in (conserva ?client_id=...).
+paginasRouter.get("/conectar", (req, res) => {
+  const q = req.url.includes("?") ? req.url.slice(req.url.indexOf("?")) : "";
+  res.redirect("/sign-in" + q);
+});
 paginasRouter.get("/consent", (_req, res) => {
   res.type("html").send(paginaConsent());
 });

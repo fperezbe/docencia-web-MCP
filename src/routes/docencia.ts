@@ -7,6 +7,7 @@ import {
   estadoConexion,
   extraerComoUsuario,
   misCursos,
+  urlLoginDocencia,
 } from "../docencia/service.js";
 import { csvJustificaciones, csvLista } from "../docencia/csv.js";
 import { ScrapeError } from "../docencia/utils.js";
@@ -66,6 +67,23 @@ router.post("/connect", limiteConexionDocencia, async (req: PeticionAutenticada,
 router.get("/estado", async (req: PeticionAutenticada, res, next) => {
   try {
     res.json(await estadoConexion(req.userId!));
+  } catch (err) {
+    responderError(res, err, next);
+  }
+});
+
+// Endpoint para el chat: devuelve el form de login para (re)conectar.
+// El chat no puede abrir el navegador solo; debe mostrar este `url` como enlace.
+router.get("/conectar", async (req: PeticionAutenticada, res, next) => {
+  try {
+    const estado = await estadoConexion(req.userId!);
+    res.json({
+      conectado: estado.conectado,
+      usuario: estado.usuario,
+      url: urlLoginDocencia(),
+      instrucciones:
+        "Abre el url en tu navegador e inicia sesión con tu usuario y clave (no las escribas en el chat). Luego vuelve aquí y continúa.",
+    });
   } catch (err) {
     responderError(res, err, next);
   }

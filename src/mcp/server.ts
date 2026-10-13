@@ -5,6 +5,7 @@ import {
   estadoConexion,
   extraerComoUsuario,
   misCursos,
+  urlLoginDocencia,
 } from "../docencia/service.js";
 import { csvJustificaciones, csvLista } from "../docencia/csv.js";
 import { ScrapeError } from "../docencia/utils.js";
@@ -61,7 +62,33 @@ export function createUserMcpServer(ctx: { userId: string; email: string }): Mcp
         return texto(
           e.conectado
             ? "Conectado como " + e.usuario + " (actualizado: " + (e.actualizadoEn ? e.actualizadoEn.toISOString() : "-") + ")."
-            : "No conectado. Usa docencia_conectar con tu usuario y clave de DocenciaWeb.",
+            : "No conectado. Usa la herramienta docencia_conectar: te da el enlace del formulario para conectar.",
+        );
+      } catch (err) {
+        return textoError(err);
+      }
+    },
+  );
+
+  server.registerTool(
+    "docencia_conectar",
+    {
+      description:
+        "Devuelve el enlace del formulario para conectar la cuenta. Úsala cuando no hay conexión o la clave cambió. No pidas ni recibas contraseñas en el chat.",
+      inputSchema: {},
+      annotations: SOLO_LECTURA,
+    },
+    async () => {
+      try {
+        const e = await estadoConexion(userId);
+        const url = urlLoginDocencia();
+        if (e.conectado) {
+          return texto("Ya estás conectado como " + e.usuario + ". Si cambiaste tu clave, abre igual este enlace para reconectar: " + url);
+        }
+        return texto(
+          "No estás conectado. Abre este enlace en tu navegador para conectar tu cuenta: " +
+            url +
+            " Inicia sesión con tu usuario y clave allí (no las escribas en el chat). Luego vuelve aquí y continúa.",
         );
       } catch (err) {
         return textoError(err);

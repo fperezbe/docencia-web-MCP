@@ -35,6 +35,11 @@ export async function conectarDocencia(
   return { conectado: true, usuario, totalCursos: cursos.length, cursos };
 }
 
+// URL absoluta del form de login (reconexión). Es lo que el chat debe abrir.
+export function urlLoginDocencia(): string {
+  return `${env.BETTER_AUTH_URL.replace(/\/+$/, "")}/sign-in`;
+}
+
 // Guarda (o reemplaza) la conexión cifrada. Asume credenciales ya validadas.
 export async function guardarConexion(userId: string, usuario: string, clave: string): Promise<void> {
   const cifrado = cifrarClavePlana(clave);
@@ -58,9 +63,9 @@ export async function leerCredenciales(
     .limit(1);
   const fila = filas[0];
   if (!fila) {
-    const login = `${env.BETTER_AUTH_URL.replace(/\/+$/, "")}/sign-in`;
+    const login = urlLoginDocencia();
     throw new ScrapeError(
-      `Tu cuenta no está conectada a DocenciaWeb. Abre ${login} en tu navegador e inicia sesión con tu usuario y clave (no la escribas en el chat).`,
+      `Tu cuenta no está conectada. Abre ${login} en tu navegador e inicia sesión con tu usuario y clave (no la escribas en el chat).`,
       401,
     );
   }

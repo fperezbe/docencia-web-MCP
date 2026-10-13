@@ -10,6 +10,7 @@ import { env } from "./env.js";
 import { docenciaRouter } from "./routes/docencia.js";
 import { accesoRouter } from "./routes/acceso.js";
 import { paginasRouter } from "./routes/paginas.js";
+import { estadoConexion, urlLoginDocencia } from "./docencia/service.js";
 import { createUserMcpServer } from "./mcp/server.js";
 import { limiteAuth } from "./middleware/rateLimit.js";
 
@@ -115,6 +116,34 @@ async function resolverUsuarioMcp(req: Request): Promise<{ userId: string; email
   }
 }
 
+// Herramientas que pueden usarse sin conexión (diagnóstico / reconexión).
+const HERRAMIENTAS_SIN_CONEXION = new Set([
+  "docencia_estado",
+  "docencia_conectar",
+  "docencia_desconectar",
+]);
+
+// true si el POST /mcp pide datos que exigen conexión. initialize, tools/list y
+// las herramientas de diagnóstico/reconexión pasan sin 401 para que el chat
+// pueda mostrar el enlace del form.
+function requiereConexionMcp(cuerpo: unknown): boolean {
+  const revisa = (m: unknown): boolean => {
+    if (!m || typeof m !== "object") return false;
+    const metodo = (m as { method?: unknown }).method;
+    if (metodo !== "tools/call") return false;
+    const nombre = (m as { params?: { name?: unknown } }).params?.name;
+    if (typeof nombre !== "string") return true;
+    return !HERRAMIENTAS_SIN_CONEXION.has(nombre);
+  };
+  if (Array.isArray(cuerpo)) return cuerpo.some(revisa);
+  return revisa(cuerpo);
+}
+
+function idJsonRpc(cuerpo: unknown): unknown {
+  if (Array.isArray(cuerpo)) return (cuerpo[0] as { id?: unknown } | undefined)?.id ?? null;
+  return (cuerpo as { id?: unknown } | undefined)?.id ?? null;
+}
+
 // MCP Streamable HTTP en modo sin estado: un servidor por petición.
 // Cada usuario (sesión u OAuth) opera solo sobre su propia conexión de DocenciaWeb.
 app.post("/mcp", async (req: Request, res: Response) => {
@@ -125,13 +154,37 @@ app.post("/mcp", async (req: Request, res: Response) => {
       .set("WWW-Authenticate", `Bearer resource_metadata="${urlMetadataRecurso()}"`)
       .json({
         jsonrpc: "2.0",
-        id: (req.body as { id?: unknown } | undefined)?.id ?? null,
+        id: idJsonRpc(req.body),
         error: {
           code: -32001,
           message: "No autenticado. Completa el login OAuth en ChatGPT/Claude, o envía un Bearer válido.",
         },
       });
     return;
+  }
+  // Sin conexión y pide datos -> 401 para que el cliente reabra el login
+  // (el form /sign-in reconecta: valida y guarda las credenciales).
+  if (requiereConexionMcp(req.body)) {
+    try {
+      const e = await estadoConexion(identidad.userId);
+      if (!e.conectado) {
+        const login = urlLoginDocencia();
+        res
+          .status(401)
+          .set("WWW-Authenticate", `Bearer resource_metadata="${urlMetadataRecurso()}"`)
+          .json({
+            jsonrpc: "2.0",
+            id: idJsonRpc(req.body),
+            error: {
+              code: -32001,
+              message: `Cuenta desconectada. Abre ${login} en tu navegador para conectar (o llama a docencia_conectar para el enlace).`,
+            },
+          });
+        return;
+      }
+    } catch {
+      /* si falla el chequeo, deja que la herramienta responda el error */
+    }
   }
   try {
     const server = createUserMcpServer({ userId: identidad.userId, email: identidad.email });
