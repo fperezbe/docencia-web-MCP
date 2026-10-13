@@ -65,6 +65,12 @@ function esperar(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));
 }
 
+// Pausa corta entre peticiones de una misma sección o login (más jitter).
+const PAUSA_CORTA_MS = 600;
+function pausaCorta(): Promise<void> {
+  return esperar(PAUSA_CORTA_MS + Math.random() * 400);
+}
+
 // Cliente mínimo que usa el scraper (evita fricción de tipos entre axios y el wrapper de cookies).
 export interface Http {
   get(url: string, config?: unknown): Promise<{ data: unknown }>;
@@ -104,6 +110,7 @@ async function login(http: Http, usuario: string, clave: string): Promise<string
   }
 
   // 2. Mismo POST que hace el navegador. axios sigue los 302 (/ -> /Home/MisCursos).
+  await pausaCorta();
   await http.post(
     "/Home/ValidaAcceso",
     new URLSearchParams({
@@ -116,6 +123,7 @@ async function login(http: Http, usuario: string, clave: string): Promise<string
   );
 
   // 3. Si la clave es incorrecta el sitio responde 200 con el formulario de nuevo.
+  await pausaCorta();
   const { data: misCursos } = await http.get("/Home/MisCursos");
   const html = String(misCursos);
   if (sinSesion(html)) {
@@ -197,6 +205,7 @@ async function fijarCurso(ctx: Ctx, curso: string, seccion: string, periodo: str
     );
   }
 
+  await pausaCorta();
   await ctx.http.get("/Curso/Menu", {
     params: { catedra: curso, seccion: sec, periodo, RolenCurso: rol },
   });
@@ -210,6 +219,7 @@ const texto = (v: unknown): string => (v === undefined || v === null ? "" : Stri
 async function listaSeccion(ctx: Ctx, curso: string, seccion: string, periodo: string): Promise<Alumno[]> {
   await fijarCurso(ctx, curso, seccion, periodo);
 
+  await pausaCorta();
   const res = await ctx.http.get("/Curso/ListaCursoExcel", { responseType: "arraybuffer" });
   const buf = Buffer.from(res.data as ArrayBuffer);
   if (sinSesion(buf.subarray(0, 4000).toString("utf8"))) {
@@ -245,6 +255,7 @@ async function justificacionesSeccion(
 ): Promise<Justificacion[]> {
   await fijarCurso(ctx, curso, seccion, periodo);
 
+  await pausaCorta();
   const { data: htmlCrudo } = await ctx.http.get("/Curso/Justificaciones");
   const html = String(htmlCrudo);
   if (sinSesion(html)) throw new ScrapeError("La sesión en DocenciaWeb expiró. Intenta de nuevo.", 401);

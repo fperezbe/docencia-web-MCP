@@ -16,7 +16,7 @@ Cliente MCP / navegador
         │  cookie de sesión o Authorization: Bearer <token> (Better Auth)
         ▼
 Express ── /api/auth/* ──▶ Better Auth (login app, tabla user/session/account)
-        ── /api/docencia/* ─▶ REST autenticada (connect, cursos, extraer xlsx, ...)
+        ── /api/docencia/* ─▶ REST autenticada (connect, cursos, extraer csv, ...)
         ── POST /mcp ──▶ McpServer por petición (userId en closure)
                                 │  credenciales descifradas solo en memoria
                                 ▼
@@ -94,9 +94,8 @@ El servidor valida las credenciales contra DocenciaWeb antes de guardarlas cifra
 |---|---|
 | `docencia_estado` | Indica si ya iniciaste sesión en el navegador |
 | `docencia_mis_cursos` | Lista cursos visibles (código, sección, periodo) |
-| `docencia_lista_alumnos` | Lista de alumnos en JSON (`curso`, `periodo`, `secciones`) |
-| `docencia_justificaciones` | Justificaciones en JSON (mismos parámetros) |
-| `docencia_exportar_excel` | Mismo contenido en `.xlsx` (base64) con el formato original |
+| `docencia_lista_alumnos` | Lista de alumnos en CSV (`curso`, `periodo`, `secciones`) |
+| `docencia_justificaciones` | Justificaciones en CSV (mismos parámetros) |
 | `docencia_desconectar` | Borra las credenciales guardadas |
 
 > **Seguridad:** ninguna herramienta pide ni recibe tu clave de DocenciaWeb. Se ingresa
@@ -107,8 +106,9 @@ El servidor valida las credenciales contra DocenciaWeb antes de guardarlas cifra
 
 Configuración de ejemplo para el cliente en `mcp.example.json`.
 
-Flujo típico con el asistente: `docencia_conectar` → `docencia_mis_cursos` →
-`docencia_lista_alumnos` con `{curso: "ENMES250", periodo: "20262", secciones: "1,2,3"}`.
+Flujo típico con el asistente: `docencia_mis_cursos` →
+`docencia_lista_alumnos` con `{curso: "ENMES250", periodo: "20262", secciones: "1,2,3"}`,
+y el asistente genera el Excel desde el CSV.
 
 ## API REST (misma funcionalidad, con `Authorization: Bearer` o cookie)
 
@@ -118,7 +118,7 @@ Flujo típico con el asistente: `docencia_conectar` → `docencia_mis_cursos` �
 | `POST` | `/api/docencia/connect` | Guarda la conexión (`usuario`, `clave`) |
 | `GET` | `/api/docencia/estado` | Estado de la conexión |
 | `GET` | `/api/docencia/cursos` | Cursos visibles |
-| `POST` | `/api/docencia/extraer` | Descarga el `.xlsx` (`curso`, `periodo`, `tipo`, `secciones`) |
+| `POST` | `/api/docencia/extraer` | Descarga el `.csv` (`curso`, `periodo`, `tipo`, `secciones`) |
 | `DELETE` | `/api/docencia/conexion` | Borra la conexión |
 | `GET` | `/api/me` / `/health` | Sesión actual / salud |
 

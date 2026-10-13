@@ -8,7 +8,7 @@ import {
   extraerComoUsuario,
   misCursos,
 } from "../docencia/service.js";
-import { excelJustificaciones, excelLista } from "../docencia/excel.js";
+import { csvJustificaciones, csvLista } from "../docencia/csv.js";
 import { ScrapeError } from "../docencia/utils.js";
 import { limiteConexionDocencia } from "../middleware/rateLimit.js";
 import type { Alumno, Justificacion } from "../docencia/client.js";
@@ -79,7 +79,7 @@ router.get("/cursos", async (req: PeticionAutenticada, res, next) => {
   }
 });
 
-// Extrae y descarga el Excel (mismo formato del extractor original).
+// Extrae y descarga el CSV (único formato de salida).
 router.post("/extraer", async (req: PeticionAutenticada, res, next) => {
   try {
     const tipo = String((req.body as Record<string, unknown> | undefined)?.tipo ?? "lista");
@@ -93,19 +93,19 @@ router.post("/extraer", async (req: PeticionAutenticada, res, next) => {
         .json({ error: "No encontré alumnos en esas secciones. Revisa curso, secciones y periodo." });
       return;
     }
-    const buffer =
+    const csv =
       tipo === "justificaciones"
-        ? excelJustificaciones(filas as Justificacion[])
-        : excelLista(filas as Alumno[]);
+        ? csvJustificaciones(filas as Justificacion[])
+        : csvLista(filas as Alumno[]);
     const { curso } = req.body as { curso: string };
     const fecha = new Date().toLocaleDateString("sv-SE");
-    const nombre = `${tipo === "lista" ? "Lista" : "Justificaciones"}-${String(curso).toUpperCase()}-${fecha}.xlsx`;
+    const nombre = `${tipo === "lista" ? "Lista" : "Justificaciones"}-${String(curso).toUpperCase()}-${fecha}.csv`;
     res.set({
-      "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      "Content-Type": "text/csv; charset=utf-8",
       "Content-Disposition": `attachment; filename="${nombre}"`,
       "X-Filas": String(filas.length),
     });
-    res.send(buffer);
+    res.send(csv);
   } catch (err) {
     responderError(res, err, next);
   }

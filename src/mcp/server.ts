@@ -6,7 +6,7 @@ import {
   extraerComoUsuario,
   misCursos,
 } from "../docencia/service.js";
-import { excelJustificaciones, excelLista } from "../docencia/excel.js";
+import { csvJustificaciones, csvLista } from "../docencia/csv.js";
 import { ScrapeError } from "../docencia/utils.js";
 import type { Alumno, Justificacion } from "../docencia/client.js";
 
@@ -16,10 +16,8 @@ const seccionesSchema = z
   .union([z.string(), z.array(z.union([z.string(), z.number()]))])
   .describe("Secciones a extraer: string con comas o arreglo.");
 
-// Máximo de filas devueltas como JSON por herramienta (el Excel no tiene límite).
-const MAX_FILAS_JSON = 1000;
-
-type Fila = Alumno | Justificacion;
+// Máximo de filas devueltas por herramienta.
+const MAX_FILAS_CSV = 1000;
 
 const SOLO_LECTURA = { readOnlyHint: true, destructiveHint: false, idempotentHint: true } as const;
 
@@ -37,13 +35,11 @@ function textoError(err: unknown) {
   return { content: [{ type: "text" as const, text: "Error: " + mensajeError(err) }], isError: true };
 }
 
-function resumenFilas(filas: Array<Fila>): string {
-  const recorte = filas.length > MAX_FILAS_JSON;
-  const visibles = recorte ? filas.slice(0, MAX_FILAS_JSON) : filas;
-  const nota = recorte
-    ? "\nNota: se muestran las primeras " + MAX_FILAS_JSON + " de " + filas.length + " filas. Usa docencia_exportar_excel para el archivo completo."
-    : "";
-  return "Filas: " + filas.length + "." + nota + "\n" + JSON.stringify(visibles, null, 2);
+function csvRecortado<T>(filas: Array<T>, construir: (f: Array<T>) => string): string {
+  const recorte = filas.length > MAX_FILAS_CSV;
+  const visibles = recorte ? filas.slice(0, MAX_FILAS_CSV) : filas;
+  const nota = recorte ? " (primeras " + MAX_FILAS_CSV + " filas; pide por partes)" : "";
+  return "Filas: " + filas.length + nota + "\n" + construir(visibles);
 }
 
 // Un servidor MCP por petición, con el userId en el closure: así cada usuario
@@ -55,7 +51,7 @@ export function createUserMcpServer(ctx: { userId: string; email: string }): Mcp
   server.registerTool(
     "docencia_estado",
     {
-      description: "Indica si este usuario ya conectó su cuenta de DocenciaWeb.",
+      description: "Indica si la cuenta de DocenciaWeb está conectada.",
       inputSchema: {},
       annotations: SOLO_LECTURA,
     },
@@ -76,7 +72,7 @@ export function createUserMcpServer(ctx: { userId: string; email: string }): Mcp
   server.registerTool(
     "docencia_mis_cursos",
     {
-      description: "Lista los cursos visibles en DocenciaWeb (código, sección y periodo). Requiere haber iniciado sesión en el navegador; nunca pidas la clave por chat.",
+      description: "Cursos visibles: código, sección y periodo.",
       inputSchema: {},
       annotations: SOLO_LECTURA,
     },
@@ -98,7 +94,7 @@ export function createUserMcpServer(ctx: { userId: string; email: string }): Mcp
     "docencia_lista_alumnos",
     {
       description:
-        "Extrae la lista de alumnos (RUT, código, nombre, repitencias, carrera) de una o más secciones. Devuelve JSON rápido; prefiérela sobre exportar_excel. Requiere haber iniciado sesión en el navegador; nunca pidas la clave por chat.",
+        "Lista de alumnos en CSV (curso, periodo, secciones).",
       inputSchema: { curso: cursoSchema, periodo: periodoSchema, secciones: seccionesSchema },
       annotations: SOLO_LECTURA,
     },
@@ -118,7 +114,7 @@ export function createUserMcpServer(ctx: { userId: string; email: string }): Mcp
             ),
           );
         }
-        return texto(resumenFilas(filas));
+        return texto(csvRecortado(filas, csvLista));
       } catch (err) {
         return textoError(err);
       }
@@ -129,7 +125,7 @@ export function createUserMcpServer(ctx: { userId: string; email: string }): Mcp
     "docencia_justificaciones",
     {
       description:
-        "Extrae las justificaciones (nombre, RUT, tipo, fechas, observaciones) de una o más secciones. Devuelve JSON rápido; prefiérela sobre exportar_excel. Requiere haber iniciado sesión en el navegador; nunca pidas la clave por chat.",
+        "Justificaciones en CSV (curso, periodo, secciones).",
       inputSchema: { curso: cursoSchema, periodo: periodoSchema, secciones: seccionesSchema },
       annotations: SOLO_LECTURA,
     },
@@ -141,47 +137,7 @@ export function createUserMcpServer(ctx: { userId: string; email: string }): Mcp
           tipo: "justificaciones",
           secciones,
         })) as Array<Justificacion>;
-        return texto(resumenFilas(filas));
-      } catch (err) {
-        return textoError(err);
-      }
-    },
-  );
-
-  server.registerTool(
-    "docencia_exportar_excel",
-    {
-      description:
-        "LENTA con muchas secciones (raspa una por una, puede tardar un minuto o más): úsala solo si el usuario pide explícitamente un archivo .xlsx; si no, usa las herramientas JSON. Con muchas secciones, divide en llamados de pocas secciones. Devuelve el Excel en base64 con el formato original.",
-      inputSchema: {
-        curso: cursoSchema,
-        periodo: periodoSchema,
-        secciones: seccionesSchema,
-        tipo: z
-          .enum(["lista", "justificaciones"])
-          .default("lista")
-          .describe("Tipo de planilla: lista o justificaciones."),
-      },
-      annotations: SOLO_LECTURA,
-    },
-    async ({ curso, periodo, secciones, tipo }) => {
-      try {
-        const filas = await extraerComoUsuario(userId, { curso, periodo, tipo, secciones });
-        const buffer =
-          tipo === "justificaciones"
-            ? excelJustificaciones(filas as Array<Justificacion>)
-            : excelLista(filas as Array<Alumno>);
-        const fecha = new Date().toISOString().slice(0, 10);
-        const nombre = (tipo === "lista" ? "Lista" : "Justificaciones") + "-" + curso.toUpperCase() + "-" + fecha + ".xlsx";
-        return texto(
-          "Archivo " + nombre + " (" + filas.length + " filas, " + buffer.length + " bytes).\n" +
-            JSON.stringify({
-              archivo: nombre,
-              mime: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-              filas: filas.length,
-              excelBase64: buffer.toString("base64"),
-            }),
-        );
+        return texto(csvRecortado(filas, csvJustificaciones));
       } catch (err) {
         return textoError(err);
       }
