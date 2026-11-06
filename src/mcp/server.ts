@@ -11,7 +11,7 @@ import { csvJustificaciones, csvLista } from "../docencia/csv.js";
 import { ScrapeError } from "../docencia/utils.js";
 import type { Alumno, Justificacion } from "../docencia/client.js";
 
-const cursoSchema = z.string().describe("Código del curso en mayúsculas. Ejemplo: ENMES250.");
+const cursoSchema = z.string().describe("Código del curso en mayúsculas.");
 const periodoSchema = z.string().describe("Periodo de 5 dígitos. Ejemplo: 20262.");
 const seccionesSchema = z
   .union([z.string(), z.array(z.union([z.string(), z.number()]))])
@@ -87,8 +87,8 @@ export function createUserMcpServer(ctx: { userId: string; email: string }): Mcp
         }
         return texto(
           "No estás conectado. Abre este enlace en tu navegador para conectar tu cuenta: " +
-            url +
-            " Inicia sesión con tu usuario y clave allí (no las escribas en el chat). Luego vuelve aquí y continúa.",
+          url +
+          " Inicia sesión con tu usuario y clave allí (no las escribas en el chat). Luego vuelve aquí y continúa.",
         );
       } catch (err) {
         return textoError(err);
@@ -109,7 +109,7 @@ export function createUserMcpServer(ctx: { userId: string; email: string }): Mcp
         if (!cursos.length) return texto("No se encontraron cursos en tu cuenta de DocenciaWeb.");
         return texto(
           "Cursos (" + cursos.length + "):\n" +
-            cursos.map((c) => "- " + c.catedra + " sección " + c.seccion + " (periodo " + c.periodo + ")").join("\n"),
+          cursos.map((c) => "- " + c.catedra + " sección " + c.seccion + " (periodo " + c.periodo + ")").join("\n"),
         );
       } catch (err) {
         return textoError(err);

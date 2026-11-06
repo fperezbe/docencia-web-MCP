@@ -69,6 +69,32 @@ export const docenciaConnection = pgTable("docencia_connection", {
 
 export type DocenciaConnection = typeof docenciaConnection.$inferSelect;
 
+// API keys personales para integraciones (Google Apps Script, planillas, etc.).
+// Solo se guarda el hash SHA-256: la clave en claro se muestra una única vez al crearla.
+export const apiKey = pgTable(
+  "api_key",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("userId")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    nombre: text("nombre").notNull(),
+    keyHash: text("key_hash").notNull().unique(),
+    keyPrefix: text("key_prefix").notNull(),
+    scopes: text("scopes").array().notNull().default(["leer"]),
+    // null = todos; si tiene valores, solo esos códigos/periodos.
+    cursosPermitidos: text("cursos_permitidos").array(),
+    periodosPermitidos: text("periodos_permitidos").array(),
+    createdAt: timestamp("createdAt").notNull().defaultNow(),
+    lastUsedAt: timestamp("lastUsedAt"),
+    expiresAt: timestamp("expiresAt"),
+    revokedAt: timestamp("revokedAt"),
+  },
+  (table) => [index("apiKey_userId_idx").on(table.userId)],
+);
+
+export type ApiKey = typeof apiKey.$inferSelect;
+
 // --- OAuth 2.1 / MCP (ChatGPT y Claude Desktop) --------------------------------
 // Tablas generadas por `auth generate` (nombres canónicos de Better Auth).
 // El adapter las ubica por clave JS; los nombres de columna en BD son snake_case.

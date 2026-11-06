@@ -10,6 +10,8 @@ import { env } from "./env.js";
 import { docenciaRouter } from "./routes/docencia.js";
 import { accesoRouter } from "./routes/acceso.js";
 import { paginasRouter } from "./routes/paginas.js";
+import { apiKeysRouter } from "./routes/apiKeys.js";
+import { v1Router } from "./routes/v1.js";
 import { estadoConexion, urlLoginDocencia } from "./docencia/service.js";
 import { createUserMcpServer } from "./mcp/server.js";
 import { limiteAuth } from "./middleware/rateLimit.js";
@@ -54,6 +56,10 @@ app.get("/api/me", async (req, res) => {
 });
 
 app.use("/api/docencia", docenciaRouter);
+// API keys personales (se crean con sesión de la app).
+app.use("/api/keys", apiKeysRouter);
+// API REST en JSON para integraciones (Apps Script, planillas, etc.).
+app.use("/api/v1", v1Router);
 app.use("/api", accesoRouter);
 
 // URL de la metadata del recurso protegido (fórmula RFC 9728, igual que el plugin).

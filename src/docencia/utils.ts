@@ -47,7 +47,7 @@ export function validarExtraccion(body: unknown): ParametrosExtraccion {
 
   const curso = String(b.curso ?? "").trim().toUpperCase();
   if (!/^[A-Z0-9]{3,20}$/.test(curso)) {
-    throw malo("El código del curso no es válido. Ejemplo: ENMES250.");
+    throw malo("El código del curso no es válido. Ejemplo: EC2106.");
   }
 
   const periodo = String(b.periodo ?? "").trim();

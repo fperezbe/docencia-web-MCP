@@ -1,4 +1,6 @@
 import { Router } from "express";
+import { fromNodeHeaders } from "better-auth/node";
+import { auth } from "../auth.js";
 
 // Páginas mínimas del flujo OAuth (ChatGPT / Claude Desktop).
 // El plugin redirige aquí con la query de autorización firmada:
@@ -28,15 +30,54 @@ const CSS =
   ".ambitos{background:#f4f6f8;border-radius:4px;padding:10px 14px;font-size:14px;margin:12px 0;text-transform:none;letter-spacing:normal}" +
   ".mono{font-family:ui-monospace,monospace;font-size:13px;word-break:break-all}" +
   ".pie{text-align:center;margin-top:24px;color:#555;font-size:14px;text-transform:none;letter-spacing:normal}" +
-  ".pie .firma{margin-top:14px;color:#777;font-size:14px}";
+  ".pie .firma{margin-top:14px;color:#777;font-size:14px}" +
+  ".pie a{color:#0a2f8a}" +
+  ".tarjeta.ancha{max-width:860px;margin:24px 0}" +
+  ".ancha h1,.ancha .sub{text-align:left}" +
+  "h2{font-size:16px;margin:28px 0 8px;color:#0a2f8a}" +
+  ".fila{display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end}" +
+  ".fila .campo{flex:1;min-width:180px;margin-top:14px}" +
+  "select{width:100%;border:0;border-bottom:1px solid #d5d5d5;padding:12px 0;font-size:16px;background:transparent;outline:none;border-radius:0}" +
+  "button.crear{width:auto;margin-top:16px;padding:12px 22px}" +
+  ".tabla-wrap{overflow-x:auto;margin-top:8px}" +
+  "table{width:100%;border-collapse:collapse;font-size:14px}" +
+  "th,td{text-align:left;padding:10px 8px;border-bottom:1px solid #e5e7eb;vertical-align:middle;white-space:nowrap}" +
+  "th{color:#555;font-weight:500;font-size:13px}" +
+  ".badge{display:inline-block;padding:3px 8px;border-radius:999px;font-size:12px;font-weight:600}" +
+  ".badge.activa{background:#e8f5e9;color:#1b5e20}" +
+  ".badge.revocada{background:#fdecec;color:#a00}" +
+  ".badge.expirada{background:#fff3e0;color:#8a4b00}" +
+  ".nueva{background:#eef4ff;border:1px solid #b8ccf5;border-radius:6px;padding:16px;margin-top:18px;display:none}" +
+  ".nueva p{margin:0 0 10px;font-size:14px}" +
+  ".clave{display:flex;gap:8px;align-items:center;flex-wrap:wrap}" +
+  ".clave code{flex:1;min-width:220px;background:#fff;border:1px solid #ccd6ea;border-radius:4px;padding:10px;font-family:ui-monospace,monospace;font-size:13px;word-break:break-all}" +
+  "button.mini{width:auto;margin:0;padding:7px 10px;font-size:12px;text-transform:none;letter-spacing:normal;background:#fff;color:#0a2f8a;border:1px solid #0a2f8a;border-radius:4px}" +
+  "button.mini:hover{background:#eef4ff}" +
+  "button.mini.peligro{color:#a00;border-color:#a00}" +
+  "button.mini.peligro:hover{background:#fdecec}" +
+  "button:disabled{opacity:.6;cursor:not-allowed}" +
+  ".vacio{color:#666;font-size:14px;padding:14px 0}" +
+  ".mono{font-family:ui-monospace,monospace;font-size:13px}";
 
-function pagina(titulo: string, cuerpo: string): string {
+function pagina(titulo: string, cuerpo: string, clase = ""): string {
   return (
     "<!doctype html><html lang='es'><head><meta charset='utf-8'>" +
     "<meta name='viewport' content='width=device-width,initial-scale=1'>" +
     "<title>" + titulo + "</title>" +
-    "<style>" + CSS + "</style></head><body><div class='tarjeta'>" + cuerpo + "</div></body></html>"
+    "<style>" + CSS + "</style></head><body><div class='tarjeta " + clase + "'>" + cuerpo + "</div></body></html>"
   );
+}
+
+function escaparHtml(valor: string): string {
+  return valor.replace(/[&<>"']/g, (c) => {
+    switch (c) {
+      case "&": return "&amp;";
+      case "<": return "&lt;";
+      case ">": return "&gt;";
+      case '"': return "&quot;";
+      default: return "&#39;";
+    }
+  });
 }
 
 const JS_COMUN =
@@ -61,7 +102,7 @@ function paginaSignIn(): string {
     "<input id='clave' type='password' autocomplete='current-password' placeholder='**********'></div>" +
     "<button class='primario' id='btn' onclick='entrar()'>Ingresar</button>" +
     "<div class='error' id='error'></div><div class='ok' id='ok'></div>" +
-    "<div class='pie'><div class='firma'>@fperezbe</div></div>" +
+    "<div class='pie'><a href='/api-keys'>Administrar API keys</a><div class='firma'>@fperezbe</div></div>" +
     "<script>" +
     JS_COMUN +
     "async function entrar(){var btn=document.getElementById('btn');btn.disabled=true;try{" +
@@ -70,7 +111,9 @@ function paginaSignIn(): string {
     "await postJSON('/api/auth/sign-in/email',{email:acc.email,password:acc.claveTemporal});" +
     "var q=window.location.search;" +
     "if(q.indexOf('client_id=')>=0){window.location.href='/api/auth/oauth2/authorize'+q;}" +
-    "else{mostrarOk('Sesi\u00f3n iniciada como '+acc.usuario+'. Ya puedes volver a la aplicaci\u00f3n y continuar.');btn.disabled=false;}}" +
+    "else{var red=new URLSearchParams(q).get('redirect');" +
+    "if(red==='/api-keys'){window.location.href=red;}" +
+    "else{mostrarOk('Sesi\u00f3n iniciada como '+acc.usuario+'. Ya puedes volver a la aplicaci\u00f3n y continuar.');btn.disabled=false;}}}" +
     "catch(e){mostrarError(e.message);btn.disabled=false;}}" +
     "</script>";
   return pagina("Iniciar sesión", cuerpo);
@@ -112,7 +155,98 @@ function paginaConsent(): string {
   return pagina("Autorizar", cuerpo);
 }
 
+const JS_API_KEYS =
+  "function el(t,c,x){var e=document.createElement(t);if(c)e.className=c;if(x!==undefined)e.textContent=x;return e;}" +
+  "function fecha(v){return v?new Date(v).toLocaleString('es-CL',{dateStyle:'short',timeStyle:'short'}):'—';}" +
+  "function estado(k){if(k.revokedAt)return ['Revocada','revocada'];if(k.expiresAt&&new Date(k.expiresAt)<=new Date())return ['Expirada','expirada'];return ['Activa','activa'];}" +
+  "async function pedir(ruta,opciones){var res=await fetch(ruta,Object.assign({credentials:'same-origin'},opciones||{}));var datos=null;try{datos=await res.json();}catch(e){}if(!res.ok){throw new Error((datos&&datos.error)||('Error '+res.status));}return datos;}" +
+  "async function cargar(){var cont=document.getElementById('lista');try{var datos=await pedir('/api/keys');" +
+  "if(!datos.keys.length){cont.className='vacio';cont.textContent='Aún no tienes API keys.';return;}" +
+  "cont.className='';var wrap=el('div','tabla-wrap');var t=el('table');var th=el('thead');var trh=el('tr');" +
+  "['Nombre','Cursos','Periodos','Prefijo','Creada','Último uso','Expira','Estado',''].forEach(function(x){trh.appendChild(el('th',null,x));});" +
+  "th.appendChild(trh);t.appendChild(th);var tb=el('tbody');" +
+  "datos.keys.forEach(function(k){var tr=el('tr');" +
+  "tr.appendChild(el('td',null,k.nombre));" +
+  "tr.appendChild(el('td',null,(k.cursosPermitidos&&k.cursosPermitidos.length)?k.cursosPermitidos.join(', '):'Todos'));" +
+  "tr.appendChild(el('td',null,(k.periodosPermitidos&&k.periodosPermitidos.length)?k.periodosPermitidos.join(', '):'Todos'));" +
+  "tr.appendChild(el('td','mono',k.keyPrefix+'…'));" +
+  "tr.appendChild(el('td',null,fecha(k.createdAt)));" +
+  "tr.appendChild(el('td',null,fecha(k.lastUsedAt)));" +
+  "tr.appendChild(el('td',null,fecha(k.expiresAt)));" +
+  "var e=estado(k);var tde=el('td');tde.appendChild(el('span','badge '+e[1],e[0]));tr.appendChild(tde);" +
+  "var tda=el('td');if(!k.revokedAt){var b=el('button','mini peligro','Revocar');b.onclick=function(){revocar(k.id,k.nombre);};tda.appendChild(b);}else{tda.appendChild(el('span',null,'—'));}tr.appendChild(tda);tb.appendChild(tr);});" +
+  "t.appendChild(tb);wrap.appendChild(t);cont.replaceChildren(wrap);}catch(e){mostrarError(e.message);}}" +
+  "async function crear(){var btn=document.getElementById('btnCrear');btn.disabled=true;ocultarMensajes();try{" +
+  "var nombre=document.getElementById('nombre').value.trim();var dias=document.getElementById('dias').value;" +
+  "var cursosTxt=document.getElementById('cursos').value.trim();" +
+  "var cursos=cursosTxt?cursosTxt.split(',').map(function(c){return c.trim();}).filter(Boolean):[];" +
+  "var periodosTxt=document.getElementById('periodos').value.trim();" +
+  "var periodos=periodosTxt?periodosTxt.split(',').map(function(p){return p.trim();}).filter(Boolean):[];" +
+  "var cuerpo={nombre:nombre||'Apps Script'};if(dias)cuerpo.expiraEnDias=Number(dias);if(cursos.length)cuerpo.cursos=cursos;if(periodos.length)cuerpo.periodos=periodos;" +
+  "var datos=await pedir('/api/keys',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(cuerpo)});" +
+  "document.getElementById('clave').textContent=datos.clave;document.getElementById('nueva').style.display='block';" +
+  "document.getElementById('nombre').value='';document.getElementById('cursos').value='';document.getElementById('periodos').value='';mostrarOk('API key creada. Cópiala ahora.');await cargar();" +
+  "}catch(e){mostrarError(e.message);}finally{btn.disabled=false;}}" +
+  "async function copiar(){var texto=document.getElementById('clave').textContent;try{await navigator.clipboard.writeText(texto);mostrarOk('Clave copiada al portapapeles.');}catch(e){var r=document.createRange();r.selectNodeContents(document.getElementById('clave'));var s=window.getSelection();s.removeAllRanges();s.addRange(r);try{document.execCommand('copy');mostrarOk('Clave copiada.');}catch(_){mostrarError('No pude copiar; selecciónala manualmente.');}}}" +
+  "async function revocar(id,nombre){if(!window.confirm('¿Revocar la key \"'+nombre+'\"? Apps Script dejará de funcionar con ella.'))return;try{await pedir('/api/keys/'+encodeURIComponent(id),{method:'DELETE'});document.getElementById('nueva').style.display='none';mostrarOk('Key revocada.');await cargar();}catch(e){mostrarError(e.message);}}" +
+  "function ocultarMensajes(){document.getElementById('error').style.display='none';document.getElementById('ok').style.display='none';}" +
+  "async function salir(){try{await fetch('/api/auth/sign-out',{method:'POST',credentials:'same-origin'});}catch(e){}window.location.href='/sign-in';}" +
+  "document.getElementById('btnCrear').onclick=crear;" +
+  "document.getElementById('btnCopiar').onclick=copiar;" +
+  "cargar();";
+
+function paginaApiKeys(usuario: string): string {
+  const cuerpo =
+    "<h1>API keys</h1>" +
+    "<p class='sub'>Sesi&oacute;n iniciada como <b>" + escaparHtml(usuario) + "</b>. " +
+    "Crea una clave para que Apps Script lea tus cursos, alumnos y justificaciones sin guardar tu contrase&ntilde;a. " +
+    "Puedes limitarla a uno o m&aacute;s cursos y periodos.</p>" +
+    "<div class='campo' style='margin-top:26px'>" +
+      "<div class='etiqueta'><span>Nueva key</span></div>" +
+      "<div class='fila'>" +
+        "<div class='campo'><input id='nombre' type='text' maxlength='80' placeholder='Ej. Planilla notas'></div>" +
+        "<div class='campo'><select id='dias'>" +
+          "<option value='90'>Expira en 90 d&iacute;as</option>" +
+          "<option value='180' selected>Expira en 180 d&iacute;as</option>" +
+          "<option value='365'>Expira en 1 a&ntilde;o</option>" +
+          "<option value=''>Sin expiraci&oacute;n</option>" +
+        "</select></div>" +
+      "</div>" +
+      "<div class='campo' style='margin-top:14px'>" +
+        "<input id='cursos' type='text' maxlength='600' placeholder='Cursos permitidos: ENMES2505, EC2106 (vac&iacute;o = todos)'>" +
+      "</div>" +
+      "<div class='campo' style='margin-top:14px'>" +
+        "<input id='periodos' type='text' maxlength='300' placeholder='Periodos permitidos: 20262, 20261 (vac&iacute;o = todos)'>" +
+      "</div>" +
+      "<button class='primario crear' id='btnCrear'>Crear API key</button>" +
+    "</div>" +
+    "<div class='error' id='error'></div><div class='ok' id='ok'></div>" +
+    "<div class='nueva' id='nueva'>" +
+      "<p><b>Guarda esta clave ahora.</b> No se vuelve a mostrar; si la pierdes, crea otra y revoca esta.</p>" +
+      "<div class='clave'><code id='clave'></code><button class='mini' id='btnCopiar'>Copiar</button></div>" +
+    "</div>" +
+    "<h2>Tus keys</h2>" +
+    "<div id='lista' class='vacio'>Cargando&hellip;</div>" +
+    "<div class='pie'><a href='#' onclick='salir();return false'>Cerrar sesi&oacute;n</a><div class='firma'>@fperezbe</div></div>" +
+    "<script>" + JS_COMUN + JS_API_KEYS + "</script>";
+  return pagina("API keys", cuerpo, "ancha");
+}
+
 export const paginasRouter = Router();
+
+paginasRouter.get("/api-keys", async (req, res) => {
+  try {
+    const datos = await auth.api.getSession({ headers: fromNodeHeaders(req.headers) });
+    if (!datos?.user) {
+      res.redirect("/sign-in?redirect=%2Fapi-keys");
+      return;
+    }
+    res.type("html").send(paginaApiKeys(datos.user.name || datos.user.email));
+  } catch {
+    res.redirect("/sign-in?redirect=%2Fapi-keys");
+  }
+});
+
 paginasRouter.get("/sign-in", (_req, res) => {
   res.type("html").send(paginaSignIn());
 });

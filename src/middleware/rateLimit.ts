@@ -16,3 +16,21 @@ export const limiteConexionDocencia = rateLimit({
   legacyHeaders: false,
   message: { error: "Demasiados intentos de conexión. Espera unos minutos." },
 });
+
+// Tope para la API v1 con API key. Cada extracción pega a DocenciaWeb y es lenta.
+export const limiteApi = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 120,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Demasiadas peticiones. Espera unos minutos y reintenta." },
+});
+
+// Crear/revocar API keys no es una operación frecuente.
+export const limiteApiKeys = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Demasiadas operaciones sobre API keys. Espera unos minutos." },
+});
